@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Joc de Memòria</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Orbitron', sans-serif;
+      background: linear-gradient(135deg, #1f1c2c, #928dab);
+      color: #f5f5f5;
+      overflow-x: hidden;
+      text-align: center;
+    }
+
+    .menu {
+      background-color: #2c2f4a;
+      border: 2px solid #00f0ff;
+      box-shadow: 0 0 20px rgba(0, 240, 255, 0.6);
+      padding: 40px;
+      border-radius: 15px;
+      width: 80%;
+      max-width: 700px;
+      margin: 80px auto;
+      opacity: 1;
+      transition: opacity 0.8s ease, transform 0.8s ease;
+    }
+
+    .menu.fade-out {
+      opacity: 0;
+      transform: translateY(-30px);
+      pointer-events: none;
+    }
+
+    h2 {
+      color: #00f0ff;
+    }
+
+    p {
+      font-size: 1.1em;
+      line-height: 1.6;
+      color: #e0e0e0;
+    }
+
+    #start-btn {
+      margin-top: 30px;
+      padding: 15px 30px;
+      font-size: 1em;
+      background-color: #00f0ff;
+      color: #2c2f4a;
+      border: none;
+      border-radius: 10px;
+      cursor: not-allowed;
+      opacity: 0.5;
+      transition: all 0.3s ease;
+    }
+
+    #start-btn.enabled {
+      cursor: pointer;
+      opacity: 1;
+    }
+
+    #game-section {
+      display: none;
+      padding: 40px 20px;
+    }
+
+    .game-container {
+      display: grid;
+      grid-template-columns: repeat(4, 100px);
+      gap: 10px;
+      justify-content: center;
+      margin-top: 20px;
+    }
+
+    .card {
+      width: 100px;
+      height: 100px;
+      background-color: #3498db;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      color: white;
+      cursor: pointer;
+      border-radius: 10px;
+      transition: transform 0.3s ease, background-color 0.3s ease;
+      transform: scale(1);
+    }
+
+    .card:hover {
+      transform: scale(1.1);
+    }
+
+    .flipped {
+      background-color: #2ecc71;
+      transform: rotateY(180deg);
+    }
+
+    #restart-btn {
+      display: none;
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background-color: #e74c3c;
+      color: white;
+      border: none;
+      cursor: pointer;
+      border-radius: 5px;
+    }
+
+    #timer.warning {
+      color: red;
+      font-weight: bold;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.2); }
+      100% { transform: scale(1); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="menu" id="intro-menu">
+    <h2>Què és un joc de memòria?</h2>
+    <p>
+      El joc de memòria és una activitat en què has de trobar parelles d'imatges iguals girant cartes. 
+      Posa a prova la teva concentració i record! Tindràs 1 minut per completar-lo!
+    </p>
+    <button id="start-btn" disabled>Començar a jugar (10)</button>
+  </div>
+
+  <div id="game-section">
+    <h1>Joc de Memòria</h1>
+    <p>Temps restant: <span id="timer">60</span> segons</p>
+    <div class="game-container" id="game-board"></div>
+    <button id="restart-btn" onclick="restartGame()">Torna a jugar</button>
+  </div>
+
+  <audio id="intense-sound" src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_846c12e881.mp3?filename=epic-tension-110056.mp3" preload="auto"></audio>
+
+  <script>
+    let countdown = 10;
+    const startBtn = document.getElementById("start-btn");
+    const menu = document.getElementById("intro-menu");
+    const gameSection = document.getElementById("game-section");
+    const timerDisplay = document.getElementById("timer");
+    const intenseSound = document.getElementById("intense-sound");
+
+    const interval = setInterval(() => {
+      countdown--;
+      startBtn.textContent = `Començar a jugar (${countdown})`;
+      if (countdown <= 0) {
+        clearInterval(interval);
+        startBtn.disabled = false;
+        startBtn.textContent = "Començar a jugar";
+        startBtn.classList.add("enabled");
+        startBtn.style.cursor = "pointer";
+      }
+    }, 1000);
+
+    startBtn.addEventListener("click", () => {
+      menu.classList.add("fade-out");
+      setTimeout(() => {
+        menu.style.display = "none";
+        gameSection.style.display = "block";
+        initGame();
+      }, 800);
+    });
+
+    function initGame() {
+      const elements = ['🔥', '💧', '🌿', '⚡', '🌎', '🌙', '☀️', '❄️'];
+      let cards = [...elements, ...elements].sort(() => Math.random() - 0.5);
+      const gameBoard = document.getElementById("game-board");
+      const restartBtn = document.getElementById("restart-btn");
+
+      let firstCard = null;
+      let secondCard = null;
+      let lockBoard = false;
+      let matchedPairs = 0;
+      let timeLeft = 60;
+      let timer;
+
+      function startTimer() {
+        timer = setInterval(() => {
+          timeLeft--;
+          timerDisplay.textContent = timeLeft;
+
+          if (timeLeft === 15) {
+            timerDisplay.classList.add("warning");
+            intenseSound.play();
+          }
+
+          if (timeLeft <= 0) {
+            clearInterval(timer);
+            alert("Temps esgotat! Has perdut.");
+            restartBtn.style.display = "inline-block";
+          }
+        }, 1000);
+      }
+
+      function createCard(symbol) {
+        const card = document.createElement("div");
+        card.classList.add("card");
+        card.dataset.symbol = symbol;
+        card.addEventListener("click", flipCard);
+        gameBoard.appendChild(card);
+      }
+
+      function flipCard() {
+        if (!timer) startTimer();
+        if (lockBoard || this === firstCard || this.classList.contains("flipped")) return;
+
+        this.textContent = this.dataset.symbol;
+        this.classList.add("flipped");
+
+        if (!firstCard) {
+          firstCard = this;
+        } else {
+          secondCard = this;
+          lockBoard = true;
+
+          if (firstCard.dataset.symbol === secondCard.dataset.symbol) {
+            matchedPairs++;
+            resetBoard();
+            if (matchedPairs === elements.length) {
+              clearInterval(timer);
+              alert(`Felicitats! Has completat el joc en ${60 - timeLeft} segons.`);
+              restartBtn.style.display = "inline-block";
+            }
+          } else {
+            setTimeout(() => {
+              firstCard.textContent = "";
+              secondCard.textContent = "";
+              firstCard.classList.remove("flipped");
+              secondCard.classList.remove("flipped");
+              resetBoard();
+            }, 1000);
+          }
+        }
+      }
+
+      function resetBoard() {
+        [firstCard, secondCard, lockBoard] = [null, null, false];
+      }
+
+      function restartGame() {
+        location.reload();
+      }
+
+      cards.forEach(createCard);
+      window.restartGame = restartGame;
+    }
+  </script>
+
+</body>
+</html>
